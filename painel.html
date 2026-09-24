@@ -353,8 +353,8 @@
             container.innerHTML = "<p style='color: #777; text-align: center;'>Carregando...</p>";
 
             try {
-                // CORRIGIDO: de "barbeiro" para "profissional"
-                let query = _supabase.from("agendamento").select("*").eq("profissional", usuarioLogado);
+                // Utilizando 'ilike' para evitar problemas com maiúsculas/minúsculas no campo profissional
+                let query = _supabase.from("agendamento").select("*").ilike("profissional", usuarioLogado);
                 if (dataFiltro) {
                     query = query.eq("data", dataFiltro);
                 }
