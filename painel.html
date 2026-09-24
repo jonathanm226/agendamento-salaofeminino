@@ -353,7 +353,8 @@
             container.innerHTML = "<p style='color: #777; text-align: center;'>Carregando...</p>";
 
             try {
-                let query = _supabase.from("agendamento").select("*").eq("barbeiro", usuarioLogado);
+                // CORRIGIDO: de "barbeiro" para "profissional"
+                let query = _supabase.from("agendamento").select("*").eq("profissional", usuarioLogado);
                 if (dataFiltro) {
                     query = query.eq("data", dataFiltro);
                 }
@@ -552,7 +553,8 @@
                     
                     card.innerHTML = `
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <strong style="color: #d63384;"><i class="fa-regular fa-clock"></i> ${item.horario} - Profissional: ${item.barbeiro}</strong>
+                            <!-- CORRIGIDO: de item.barbeiro para item.profissional -->
+                            <strong style="color: #d63384;"><i class="fa-regular fa-clock"></i> ${item.horario} - Profissional: ${item.profissional || 'Não informado'}</strong>
                             <span style="font-size: 0.8rem; color: #777;">${dataFormatada}</span>
                         </div>
                         <p style="margin: 2px 0; font-size: 0.9rem; color: #333;"><strong>Cliente:</strong> ${item.cliente} ${isCancelado ? '<span style="color: #e74c3c; font-size: 0.8rem;">(Cancelado)</span>' : isConcluido ? '<span style="color: #25D366; font-size: 0.8rem;">(Concluído)</span>' : ''}</p>
