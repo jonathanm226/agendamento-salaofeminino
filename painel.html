@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel de Agendamentos</title>
+    <!-- SDK do Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Painel de Gestão - Agendamentos</h1>
+    <div id="lista-agendamentos">Carregando...</div>
+
+    <script>
+        const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvZWNvb3N1cWliemRzeWFkc3lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjQwMDAsImV4cCI6MjEwNTUwMDAwMH0.M2-NrLZQv-DqTtsIp4DbFHzgTjUENCA5X1ZPdDlmhPQ";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function buscarPainel() {
+            const container = document.getElementById("lista-agendamentos");
+            
+            const { data, error } = await supabaseClient
+                .from("agendamento")
+                .select("*")
+                .order("id", { ascending: false });
+
+            if (error) {
+                container.innerHTML = "Erro ao carregar dados do painel.";
+                console.error(error);
+                return;
+            }
+
+            if (data.length === 0) {
+                container.innerHTML = "<p>Nenhum agendamento encontrado.</p>";
+                return;
+            }
+
+            let html = "<ul>";
+            data.forEach(item => {
+                html += `<li><b>${item.cliente}</b> - ${item.servico} com ${item.barbeiro} em ${item.data} às ${item.horario}</li>`;
+            });
+            html += "</ul>";
+
+            container.innerHTML = html;
+        }
+
+        // Executa ao carregar a página
+        buscarPainel();
+    </script>
+</body>
+</html>
