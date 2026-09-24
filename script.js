@@ -102,7 +102,7 @@ async function sendToWhatsapp() {
 
     const nomesServicos = selectedServices.map(s => s.name).join(", ");
     
-    // Tenta salvar no Supabase em segundo plano de forma silenciosa (sem exibir erros para o utilizador)
+    // Tenta salvar no Supabase em segundo plano de forma silenciosa
     supabaseClient
         .from("agendamento")
         .insert([
@@ -120,14 +120,14 @@ async function sendToWhatsapp() {
             if (error) console.log("Aviso de sincronização local:", error.message);
         });
 
-    // Número do WhatsApp do estúdio (exemplo com DDD)
-    const seuNumeroWhatsApp = "5531999999999"; 
+    // Número do WhatsApp do estúdio atualizado
+    const seuNumeroWhatsApp = "5531994951564"; 
     
     const textoMensagem = `Olá! Gostaria de confirmar meu agendamento no Studio Bella.\n\n*Profissional:* ${selectedBarber}\n*Serviço(s):* ${nomesServicos}\n*Data:* ${dateInput}\n*Horário:* ${timeInput}\n*Cliente:* ${clientName} (${clientPhone})`;
     
     const urlWhatsApp = `https://api.whatsapp.com/send?phone=${seuNumeroWhatsApp}&text=${encodeURIComponent(textoMensagem)}`;
 
-    // Abre o WhatsApp imediatamente sem erros
+    // Abre o WhatsApp imediatamente
     window.open(urlWhatsApp, '_blank');
 }
 
