@@ -354,10 +354,16 @@
 
             try {
                 let query = _supabase.from("agendamento").select("*").eq("barbeiro", usuarioLogado);
-                if (dataFiltro) query = query.eq("data", dataFiltro);
+                if (dataFiltro) {
+                    query = query.eq("data", dataFiltro);
+                }
 
                 const { data, error } = await query;
-                if (error) throw error;
+                if (error) {
+                    console.error("Erro retornado pelo Supabase (Barbeiro):", error);
+                    container.innerHTML = `<p style='color: #e74c3c; text-align: center;'>Erro ao carregar dados: ${error.message}</p>`;
+                    return;
+                }
 
                 let faturamentoTotal = 0;
                 let qtdConcluidos = 0;
@@ -459,8 +465,8 @@
                     container.appendChild(card);
                 });
             } catch (err) {
-                console.error("Erro ao carregar agenda:", err);
-                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar dados.</p>";
+                console.error("Erro crítico ao carregar agenda:", err);
+                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro crítico ao carregar dados.</p>";
             }
         }
 
@@ -477,10 +483,16 @@
 
             try {
                 let query = _supabase.from("agendamento").select("*");
-                if (dataFiltro) query = query.eq("data", dataFiltro);
+                if (dataFiltro) {
+                    query = query.eq("data", dataFiltro);
+                }
 
                 const { data, error } = await query;
-                if (error) throw error;
+                if (error) {
+                    console.error("Erro retornado pelo Supabase (Admin):", error);
+                    container.innerHTML = `<p style='color: #e74c3c; text-align: center;'>Erro ao carregar dados: ${error.message}</p>`;
+                    return;
+                }
 
                 let faturamentoTotal = 0;
                 let qtdConcluidos = 0;
@@ -550,8 +562,8 @@
                 });
 
             } catch (err) {
-                console.error("Erro ao carregar resumo:", err);
-                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar resumo administrativo.</p>";
+                console.error("Erro crítico ao carregar resumo admin:", err);
+                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro crítico ao carregar resumo administrativo.</p>";
             }
         }
 
