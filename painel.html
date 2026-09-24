@@ -83,15 +83,25 @@
                 </div>
             </div>
 
-            <div class="input-group" style="margin-bottom: 20px;">
-                <label for="filter-date-barber">Selecionar Data:</label>
-                <input type="date" id="filter-date-barber" onclick="this.showPicker && this.showPicker()" onchange="carregarAgendamentos()">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div class="input-group" style="flex: 1;">
+                    <label for="filter-type-barber">Filtrar por Período:</label>
+                    <select id="filter-type-barber" onchange="alternarFiltroTipo('barber')" style="padding: 12px; background: #FAFAFA; border: 1px solid #DDDDDD; border-radius: 8px;">
+                        <option value="dia">Dia Específico</option>
+                        <option value="semana">Últimos 7 Dias (Semana)</option>
+                        <option value="mes">Mês Atual</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1;" id="group-date-barber">
+                    <label for="filter-date-barber">Selecionar Data:</label>
+                    <input type="date" id="filter-date-barber" onclick="this.showPicker && this.showPicker()" onchange="carregarAgendamentos()">
+                </div>
             </div>
 
             <!-- Card de Fechamento Individual -->
             <div style="background: #FDF2F8; border: 2px solid #d63384; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
                 <h3 style="color: #d63384; margin-bottom: 10px; font-size: 1.1rem;">
-                    <i class="fa-solid fa-chart-pie"></i> Meu Fechamento do Dia
+                    <i class="fa-solid fa-chart-pie"></i> Meu Fechamento (<span id="label-periodo-barber">Dia</span>)
                 </h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
                     <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
@@ -134,15 +144,25 @@
                 </div>
             </div>
 
-            <div class="input-group" style="margin-bottom: 20px;">
-                <label for="filter-date-admin">Selecionar Data:</label>
-                <input type="date" id="filter-date-admin" onclick="this.showPicker && this.showPicker()" onchange="carregarResumoAdmin()">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div class="input-group" style="flex: 1;">
+                    <label for="filter-type-admin">Filtrar por Período:</label>
+                    <select id="filter-type-admin" onchange="alternarFiltroTipo('admin')" style="padding: 12px; background: #FAFAFA; border: 1px solid #DDDDDD; border-radius: 8px;">
+                        <option value="dia">Dia Específico</option>
+                        <option value="semana">Últimos 7 Dias (Semana)</option>
+                        <option value="mes">Mês Atual</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1;" id="group-date-admin">
+                    <label for="filter-date-admin">Selecionar Data:</label>
+                    <input type="date" id="filter-date-admin" onclick="this.showPicker && this.showPicker()" onchange="carregarResumoAdmin()">
+                </div>
             </div>
 
             <!-- Cards de Resumo Geral -->
             <div style="background: #FDF2F8; border: 2px solid #d63384; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
                 <h3 style="color: #d63384; margin-bottom: 10px; font-size: 1.1rem;">
-                    <i class="fa-solid fa-chart-pie"></i> Fechamento Geral do Dia
+                    <i class="fa-solid fa-chart-pie"></i> Fechamento Geral (<span id="label-periodo-admin">Dia</span>)
                 </h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
                     <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
@@ -167,7 +187,7 @@
                 <div style="background: #FFF; padding: 12px; border-radius: 6px; font-size: 0.9rem; color: #555; border: 1px solid #F3C6D8;" id="admin-detalhes-pagamento"></div>
             </div>
 
-            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #d63384;">Visão Geral dos Horários do Dia</h3>
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #d63384;">Visão Geral dos Registos</h3>
             <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </section>
 
@@ -260,6 +280,18 @@
             document.getElementById("login-section").style.display = "block";
         }
 
+        function alternarFiltroTipo(painel) {
+            const tipo = document.getElementById(`filter-type-${painel}`).value;
+            const grupoData = document.getElementById(`group-date-${painel}`);
+            if (tipo === 'dia') {
+                grupoData.style.display = "block";
+            } else {
+                grupoData.style.display = "none";
+            }
+            if (painel === 'barber') carregarAgendamentos();
+            else carregarResumoAdmin();
+        }
+
         function abrirModalSenha() {
             const modal = document.getElementById("custom-password-modal");
             const inputSenha = document.getElementById("input-nova-senha");
@@ -342,6 +374,7 @@
         }
 
         async function carregarAgendamentos() {
+            const tipoFiltro = document.getElementById("filter-type-barber").value;
             const dataFiltro = document.getElementById("filter-date-barber").value;
             const container = document.getElementById("agendamentos-list-barbeiro");
             const lblQtd = document.getElementById("barber-resumo-qtd");
@@ -349,22 +382,31 @@
             const lblCanceladosQtd = document.getElementById("barber-resumo-cancelados-qtd");
             const lblCanceladosVal = document.getElementById("barber-resumo-cancelados-val");
             const lblDetalhes = document.getElementById("barber-detalhes-pagamento");
+            const lblPeriodo = document.getElementById("label-periodo-barber");
 
             container.innerHTML = "<p style='color: #777; text-align: center;'>Carregando...</p>";
 
             try {
-                // Utilizando 'ilike' para evitar problemas com maiúsculas/minúsculas no campo profissional
                 let query = _supabase.from("agendamento").select("*").ilike("profissional", usuarioLogado);
-                if (dataFiltro) {
+
+                if (tipoFiltro === 'dia' && dataFiltro) {
                     query = query.eq("data", dataFiltro);
+                    lblPeriodo.textContent = "do Dia";
+                } else if (tipoFiltro === 'semana') {
+                    const hoje = new Date();
+                    const ily = new Date();
+                    ily.setDate(hoje.getDate() - 7);
+                    query = query.gte("data", ily.toISOString().split("T")[0]).lte("data", hoje.toISOString().split("T")[0]);
+                    lblPeriodo.textContent = "da Semana (7 Dias)";
+                } else if (tipoFiltro === 'mes') {
+                    const agora = new Date();
+                    const anoMes = agora.toISOString().slice(0, 7); // YYYY-MM
+                    query = query.gte("data", `${anoMes}-01`).lte("data", `${anoMes}-31`);
+                    lblPeriodo.textContent = "do Mês Atual";
                 }
 
                 const { data, error } = await query;
-                if (error) {
-                    console.error("Erro retornado pelo Supabase (Barbeiro):", error);
-                    container.innerHTML = `<p style='color: #e74c3c; text-align: center;'>Erro ao carregar dados: ${error.message}</p>`;
-                    return;
-                }
+                if (error) throw error;
 
                 let faturamentoTotal = 0;
                 let qtdConcluidos = 0;
@@ -400,7 +442,7 @@
                 `;
 
                 if (data.length === 0) {
-                    container.innerHTML = "<p style='color: #777; text-align: center;'>Nenhum agendamento encontrado para esta data.</p>";
+                    container.innerHTML = "<p style='color: #777; text-align: center;'>Nenhum registo encontrado para este período.</p>";
                     return;
                 }
 
@@ -409,7 +451,7 @@
                     const dataFormatada = item.data ? item.data.split("-").reverse().join("/") : '--/--/----';
                     let precoServico = calcularPrecoServico(item.servico);
                     const telefoneLimpo = item.telefone ? item.telefone.replace(/\D/g, '') : '';
-                    const mensagemLembrete = encodeURIComponent(`Olá, ${item.cliente}! Passando para lembrar do seu horário hoje às ${item.horario} (${item.servico}) no Studio Bella. Te aguardamos aqui! 🌸`);
+                    const mensagemLembrete = encodeURIComponent(`Olá, ${item.cliente}! Passando para lembrar do seu horário às ${item.horario} (${item.servico}) no Studio Bella. Te aguardamos aqui! 🌸`);
                     const linkZapCliente = telefoneLimpo ? `https://wa.me/55${telefoneLimpo}?text=${mensagemLembrete}` : `#`;
 
                     const isConcluido = item.status === 'concluido';
@@ -472,6 +514,7 @@
         }
 
         async function carregarResumoAdmin() {
+            const tipoFiltro = document.getElementById("filter-type-admin").value;
             const dataFiltro = document.getElementById("filter-date-admin").value;
             const container = document.getElementById("agendamentos-list-admin");
             const lblQtd = document.getElementById("admin-resumo-qtd");
@@ -479,21 +522,31 @@
             const lblCanceladosQtd = document.getElementById("admin-resumo-cancelados-qtd");
             const lblCanceladosVal = document.getElementById("admin-resumo-cancelados-val");
             const lblDetalhes = document.getElementById("admin-detalhes-pagamento");
+            const lblPeriodo = document.getElementById("label-periodo-admin");
 
             container.innerHTML = "<p style='color: #777; text-align: center;'>Carregando...</p>";
 
             try {
                 let query = _supabase.from("agendamento").select("*");
-                if (dataFiltro) {
+
+                if (tipoFiltro === 'dia' && dataFiltro) {
                     query = query.eq("data", dataFiltro);
+                    lblPeriodo.textContent = "do Dia";
+                } else if (tipoFiltro === 'semana') {
+                    const hoje = new Date();
+                    const ily = new Date();
+                    ily.setDate(hoje.getDate() - 7);
+                    query = query.gte("data", ily.toISOString().split("T")[0]).lte("data", hoje.toISOString().split("T")[0]);
+                    lblPeriodo.textContent = "da Semana (7 Dias)";
+                } else if (tipoFiltro === 'mes') {
+                    const agora = new Date();
+                    const anoMes = agora.toISOString().slice(0, 7);
+                    query = query.gte("data", `${anoMes}-01`).lte("data", `${anoMes}-31`);
+                    lblPeriodo.textContent = "do Mês Atual";
                 }
 
                 const { data, error } = await query;
-                if (error) {
-                    console.error("Erro retornado pelo Supabase (Admin):", error);
-                    container.innerHTML = `<p style='color: #e74c3c; text-align: center;'>Erro ao carregar dados: ${error.message}</p>`;
-                    return;
-                }
+                if (error) throw error;
 
                 let faturamentoTotal = 0;
                 let qtdConcluidos = 0;
@@ -529,7 +582,7 @@
                 `;
 
                 if (data.length === 0) {
-                    container.innerHTML = "<p style='color: #777; text-align: center;'>Nenhum registro encontrado para esta data.</p>";
+                    container.innerHTML = "<p style='color: #777; text-align: center;'>Nenhum registro encontrado para este período.</p>";
                     return;
                 }
 
@@ -553,7 +606,6 @@
                     
                     card.innerHTML = `
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <!-- CORRIGIDO: de item.barbeiro para item.profissional -->
                             <strong style="color: #d63384;"><i class="fa-regular fa-clock"></i> ${item.horario} - Profissional: ${item.profissional || 'Não informado'}</strong>
                             <span style="font-size: 0.8rem; color: #777;">${dataFormatada}</span>
                         </div>
