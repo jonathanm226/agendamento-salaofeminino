@@ -2,50 +2,591 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Agendamentos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Bella | Painel de Controle</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <!-- SDK do Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .custom-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center;
+            z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s ease-in-out;
+        }
+        .custom-modal-overlay.active { opacity: 1; visibility: visible; }
+        .custom-modal {
+            background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 8px;
+            padding: 25px; width: 90%; max-width: 400px; text-align: center;
+            box-shadow: 0 4px 20px rgba(214, 51, 132, 0.15);
+        }
+        .custom-modal h3 { color: #d63384; font-size: 1.1rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .custom-modal p { color: #555555; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
+        .custom-modal input {
+            width: 100%; padding: 12px; background: #FAFAFA; border: 1px solid #DDD;
+            border-radius: 6px; color: #333; font-size: 1rem; margin-bottom: 20px; outline: none;
+        }
+        .custom-modal-buttons { display: flex; gap: 10px; }
+        .custom-modal-btn { flex: 1; padding: 12px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
+        .btn-modal-cancelar { background: #EAEAEA; color: #333333; border: 1px solid #DDD; }
+        .btn-modal-confirmar { background: #d63384; color: #FFFFFF; }
+    </style>
 </head>
 <body>
-    <h1>Painel de Gestão - Agendamentos</h1>
-    <div id="lista-agendamentos">Carregando...</div>
+
+    <div class="app-container" style="max-width: 700px;">
+        
+        <!-- Cabeçalho -->
+        <header class="barber-header">
+            <div class="brand-info">
+                <div class="brand-logo-container" style="width: 55px; height: 55px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #d63384; margin: 0 auto 8px auto;">
+                    <i class="fa-solid fa-spa" style="color: #d63384; font-size: 1.3rem;"></i>
+                </div>
+                <div>
+                    <h1>Studio Bella</h1>
+                    <p id="painel-subtitulo">Painel de Controlo e Fechamento</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Seção de Login por Input -->
+        <section id="login-section" class="section">
+            <h2>Acesso Restrito ao Painel</h2>
+            <div class="datetime-inputs">
+                <div class="input-group">
+                    <label for="login-usuario">Usuário (ex: ana, juliana, mariana, admin):</label>
+                    <input type="text" id="login-usuario">
+                </div>
+                <div class="input-group">
+                    <label for="login-senha">Senha:</label>
+                    <input type="password" id="login-senha">
+                </div>
+                <button class="btn-primary-action" onclick="fazerLogin()" style="background-color: #d63384;">Entrar</button>
+            </div>
+        </section>
+
+        <!-- Seção da Agenda da Profissional -->
+        <section id="dashboard-barbeiro" class="section" style="display: none;">
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                <h2 id="titulo-agenda-barbeiro" style="font-size: 1.1rem; margin: 0; color: #d63384;">Minha Agenda</h2>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button onclick="abrirModalSenha()" class="btn-whatsapp" style="flex: 1; min-width: 110px; padding: 8px 6px; font-size: 0.75rem; background: #d63384; color: #FFF; text-align: center;">
+                        <i class="fa-solid fa-key"></i> Alterar Senha
+                    </button>
+                    <button onclick="carregarAgendamentos()" class="btn-whatsapp" style="flex: 1; min-width: 90px; padding: 8px 6px; font-size: 0.75rem; text-align: center;">
+                        <i class="fa-solid fa-rotate"></i> Atualizar
+                    </button>
+                    <button onclick="fazerLogout()" class="btn-whatsapp" style="flex: 1; min-width: 70px; padding: 8px 6px; font-size: 0.75rem; background: #e74c3c; color: #FFF; text-align: center;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair
+                    </button>
+                </div>
+            </div>
+
+            <div class="input-group" style="margin-bottom: 20px;">
+                <label for="filter-date-barber">Selecionar Data:</label>
+                <input type="date" id="filter-date-barber" onclick="this.showPicker && this.showPicker()" onchange="carregarAgendamentos()">
+            </div>
+
+            <!-- Card de Fechamento Individual -->
+            <div style="background: #FDF2F8; border: 2px solid #d63384; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+                <h3 style="color: #d63384; margin-bottom: 10px; font-size: 1.1rem;">
+                    <i class="fa-solid fa-chart-pie"></i> Meu Fechamento do Dia
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Atendimentos Concluídos</span>
+                        <strong id="barber-resumo-qtd" style="font-size: 1.2rem; color: #333;">0</strong>
+                    </div>
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Faturamento Total</span>
+                        <strong id="barber-resumo-total" style="font-size: 1.2rem; color: #25D366;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Atendimentos Cancelados</span>
+                        <strong id="barber-resumo-cancelados-qtd" style="font-size: 1.2rem; color: #e74c3c;">0</strong>
+                    </div>
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Valor Cancelado</span>
+                        <strong id="barber-resumo-cancelados-val" style="font-size: 1.2rem; color: #e74c3c;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <div style="background: #FFF; padding: 12px; border-radius: 6px; font-size: 0.9rem; color: #555; border: 1px solid #F3C6D8;" id="barber-detalhes-pagamento"></div>
+            </div>
+
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #d63384;">Lista de Horários</h3>
+            <div id="agendamentos-list-barbeiro" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </section>
+
+        <!-- Seção de Resumo do Administrador -->
+        <section id="dashboard-admin" class="section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="color: #d63384;">Resumo Administrativo</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="carregarResumoAdmin()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem;">
+                        <i class="fa-solid fa-rotate"></i> Atualizar
+                    </button>
+                    <button onclick="fazerLogout()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #e74c3c; color: #FFF;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair
+                    </button>
+                </div>
+            </div>
+
+            <div class="input-group" style="margin-bottom: 20px;">
+                <label for="filter-date-admin">Selecionar Data:</label>
+                <input type="date" id="filter-date-admin" onclick="this.showPicker && this.showPicker()" onchange="carregarResumoAdmin()">
+            </div>
+
+            <!-- Cards de Resumo Geral -->
+            <div style="background: #FDF2F8; border: 2px solid #d63384; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+                <h3 style="color: #d63384; margin-bottom: 10px; font-size: 1.1rem;">
+                    <i class="fa-solid fa-chart-pie"></i> Fechamento Geral do Dia
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Atendimentos Concluídos</span>
+                        <strong id="admin-resumo-qtd" style="font-size: 1.2rem; color: #333;">0</strong>
+                    </div>
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Faturamento Total</span>
+                        <strong id="admin-resumo-total" style="font-size: 1.2rem; color: #25D366;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Atendimentos Cancelados</span>
+                        <strong id="admin-resumo-cancelados-qtd" style="font-size: 1.2rem; color: #e74c3c;">0</strong>
+                    </div>
+                    <div style="background: #FFF; padding: 10px; border-radius: 6px; border: 1px solid #F3C6D8;">
+                        <span style="color: #888; display: block; font-size: 0.8rem;">Valor Cancelado</span>
+                        <strong id="admin-resumo-cancelados-val" style="font-size: 1.2rem; color: #e74c3c;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <div style="background: #FFF; padding: 12px; border-radius: 6px; font-size: 0.9rem; color: #555; border: 1px solid #F3C6D8;" id="admin-detalhes-pagamento"></div>
+            </div>
+
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #d63384;">Visão Geral dos Horários do Dia</h3>
+            <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </section>
+
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="custom-confirm-modal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <h3 id="modal-title">Confirmação</h3>
+            <p id="modal-message">Deseja realmente executar esta ação?</p>
+            <div class="custom-modal-buttons">
+                <button id="modal-btn-nao" class="custom-modal-btn btn-modal-cancelar">Não</button>
+                <button id="modal-btn-sim" class="custom-modal-btn btn-modal-confirmar">Sim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Alteração de Senha -->
+    <div id="custom-password-modal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <h3>Alterar sua Senha</h3>
+            <p id="password-modal-user">Digite a nova senha:</p>
+            <input type="password" id="input-nova-senha" placeholder="Nova senha">
+            <div class="custom-modal-buttons">
+                <button id="pass-btn-cancelar" class="custom-modal-btn btn-modal-cancelar">Cancelar</button>
+                <button id="pass-btn-salvar" class="custom-modal-btn btn-modal-confirmar">Salvar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvZWNvb3N1cWliemRzeWFkc3lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjQwMDAsImV4cCI6MjEwNTUwMDAwMH0.M2-NrLZQv-DqTtsIp4DbFHzgTjUENCA5X1ZPdDlmhPQ";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let usuarioLogado = "";
 
-        async function buscarPainel() {
-            const container = document.getElementById("lista-agendamentos");
-            
-            const { data, error } = await supabaseClient
-                .from("agendamento")
-                .select("*")
-                .order("id", { ascending: false });
-
-            if (error) {
-                container.innerHTML = "Erro ao carregar dados do painel.";
-                console.error(error);
-                return;
-            }
-
-            if (data.length === 0) {
-                container.innerHTML = "<p>Nenhum agendamento encontrado.</p>";
-                return;
-            }
-
-            let html = "<ul>";
-            data.forEach(item => {
-                html += `<li><b>${item.cliente}</b> - ${item.servico} com ${item.barbeiro} em ${item.data} às ${item.horario}</li>`;
-            });
-            html += "</ul>";
-
-            container.innerHTML = html;
+        function obterSenhaUsuario(user) {
+            const senhaSalva = localStorage.getItem(`senha_${user.toLowerCase()}`);
+            if (senhaSalva) return senhaSalva;
+            if (user.toLowerCase() === 'admin') return 'admin123';
+            return '1234'; 
         }
 
-        // Executa ao carregar a página
-        buscarPainel();
+        function fazerLogin() {
+            const usuarioInput = document.getElementById("login-usuario").value.trim();
+            const senhaInput = document.getElementById("login-senha").value;
+            const hoje = new Date().toISOString().split("T")[0];
+
+            if (!usuarioInput || !senhaInput) {
+                alert("Por favor, preencha o usuário e a senha.");
+                return;
+            }
+
+            const userLower = usuarioInput.toLowerCase();
+            const senhaCorreta = obterSenhaUsuario(usuarioInput);
+
+            if (senhaInput !== senhaCorreta) {
+                alert("Usuário ou senha incorretos!");
+                return;
+            }
+
+            document.getElementById("login-usuario").value = "";
+            document.getElementById("login-senha").value = "";
+
+            if (userLower === 'admin') {
+                usuarioLogado = "Admin";
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard-barbeiro").style.display = "none";
+                document.getElementById("dashboard-admin").style.display = "block";
+                document.getElementById("filter-date-admin").value = hoje;
+                carregarResumoAdmin();
+            } else if (userLower === 'ana' || userLower === 'juliana' || userLower === 'mariana') {
+                usuarioLogado = userLower.charAt(0).toUpperCase() + userLower.slice(1);
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard-admin").style.display = "none";
+                document.getElementById("dashboard-barbeiro").style.display = "block";
+                document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda: ${usuarioLogado}`;
+                document.getElementById("filter-date-barber").value = hoje;
+                carregarAgendamentos();
+            } else {
+                alert("Usuário não encontrado ou sem permissão de acesso!");
+            }
+        }
+
+        function fazerLogout() {
+            usuarioLogado = "";
+            document.getElementById("dashboard-barbeiro").style.display = "none";
+            document.getElementById("dashboard-admin").style.display = "none";
+            document.getElementById("login-section").style.display = "block";
+        }
+
+        function abrirModalSenha() {
+            const modal = document.getElementById("custom-password-modal");
+            const inputSenha = document.getElementById("input-nova-senha");
+            inputSenha.value = "";
+            document.getElementById("password-modal-user").textContent = `Nova senha para ${usuarioLogado}:`;
+            modal.classList.add("active");
+
+            const btnSalvar = document.getElementById("pass-btn-salvar");
+            const btnCancelar = document.getElementById("pass-btn-cancelar");
+
+            const novoBtnSalvar = btnSalvar.cloneNode(true);
+            const novoBtnCancelar = btnCancelar.cloneNode(true);
+            btnSalvar.parentNode.replaceChild(novoBtnSalvar, btnSalvar);
+            btnCancelar.parentNode.replaceChild(novoBtnCancelar, btnCancelar);
+
+            novoBtnSalvar.addEventListener("click", () => {
+                const novaSenha = inputSenha.value.trim();
+                if (novaSenha) {
+                    localStorage.setItem(`senha_${usuarioLogado.toLowerCase()}`, novaSenha);
+                    modal.classList.remove("active");
+                    alert("Senha alterada com sucesso!");
+                } else {
+                    alert("Digite uma senha válida.");
+                }
+            });
+
+            novoBtnCancelar.addEventListener("click", () => {
+                modal.classList.remove("active");
+            });
+        }
+
+        function mostrarConfirmacao(titulo, mensagem, onConfirmar) {
+            const modal = document.getElementById("custom-confirm-modal");
+            document.getElementById("modal-title").textContent = titulo;
+            document.getElementById("modal-message").textContent = mensagem;
+            modal.classList.add("active");
+
+            const btnSim = document.getElementById("modal-btn-sim");
+            const btnNao = document.getElementById("modal-btn-nao");
+
+            const novoBtnSim = btnSim.cloneNode(true);
+            const novoBtnNao = btnNao.cloneNode(true);
+            btnSim.parentNode.replaceChild(novoBtnSim, btnSim);
+            btnNao.parentNode.replaceChild(novoBtnNao, btnNao);
+
+            novoBtnSim.addEventListener("click", () => {
+                modal.classList.remove("active");
+                onConfirmar();
+            });
+            novoBtnNao.addEventListener("click", () => {
+                modal.classList.remove("active");
+            });
+        }
+
+        function normalizarTexto(texto) {
+            if (!texto) return "";
+            return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        }
+
+        const precosTabela = {
+            "manicure simples": 30,
+            "pedicure": 35,
+            "alongamento em gel": 120,
+            "extensão de cílios fio a fio": 100,
+            "volume russo": 130,
+            "design de sobrancelha": 35,
+            "design com henna": 50,
+            "escova modelada": 60
+        };
+
+        function calcularPrecoServico(nomeServico) {
+            if (!nomeServico) return 30;
+            const nomeNorm = normalizarTexto(nomeServico);
+            if (precosTabela[nomeNorm]) return precosTabela[nomeNorm];
+            let total = 0;
+            nomeServico.split(",").forEach(parte => {
+                total += precosTabela[normalizarTexto(parte)] || 30;
+            });
+            return total > 0 ? total : 30;
+        }
+
+        async function carregarAgendamentos() {
+            const dataFiltro = document.getElementById("filter-date-barber").value;
+            const container = document.getElementById("agendamentos-list-barbeiro");
+            const lblQtd = document.getElementById("barber-resumo-qtd");
+            const lblTotal = document.getElementById("barber-resumo-total");
+            const lblCanceladosQtd = document.getElementById("barber-resumo-cancelados-qtd");
+            const lblCanceladosVal = document.getElementById("barber-resumo-cancelados-val");
+            const lblDetalhes = document.getElementById("barber-detalhes-pagamento");
+
+            container.innerHTML = "<p style='color: #777; text-align: center;'>Carregando...</p>";
+
+            try {
+                let query = _supabase.from("agendamento").select("*").eq("barbeiro", usuarioLogado);
+                if (dataFiltro) query = query.eq("data", dataFiltro);
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                let faturamentoTotal = 0;
+                let qtdConcluidos = 0;
+                let qtdCancelados = 0;
+                let valorCancelados = 0;
+                let totaisPagamento = { Dinheiro: 0, Pix: 0, Débito: 0, Crédito: 0 };
+
+                data.forEach(item => {
+                    const preco = calcularPrecoServico(item.servico);
+                    if (item.status === 'concluido') {
+                        qtdConcluidos++;
+                        faturamentoTotal += preco;
+                        if (item.pagamentos && totaisPagamento[item.pagamentos] !== undefined) {
+                            totaisPagamento[item.pagamentos] += preco;
+                        }
+                    } else if (item.status === 'cancelado') {
+                        qtdCancelados++;
+                        valorCancelados += preco;
+                    }
+                });
+
+                lblQtd.textContent = qtdConcluidos;
+                lblTotal.textContent = `R$ ${faturamentoTotal.toFixed(2).replace(".", ",")}`;
+                lblCanceladosQtd.textContent = qtdCancelados;
+                lblCanceladosVal.textContent = `R$ ${valorCancelados.toFixed(2).replace(".", ",")}`;
+                
+                lblDetalhes.innerHTML = `
+                    <strong>Por Forma de Pagamento:</strong><br>
+                    💵 Dinheiro: R$ ${totaisPagamento.Dinheiro.toFixed(2).replace(".", ",")} | 
+                    📱 Pix: R$ ${totaisPagamento.Pix.toFixed(2).replace(".", ",")}<br>
+                    💳 Débito: R$ ${totaisPagamento.Débito.toFixed(2).replace(".", ",")} | 
+                    💳 Crédito: R$ ${totaisPagamento.Crédito.toFixed(2).replace(".", ",")}
+                `;
+
+                if (data.length === 0) {
+                    container.innerHTML = "<p style='color: #777; text-align: center;'>Nenhum agendamento encontrado para esta data.</p>";
+                    return;
+                }
+
+                container.innerHTML = "";
+                data.forEach(item => {
+                    const dataFormatada = item.data ? item.data.split("-").reverse().join("/") : '--/--/----';
+                    let precoServico = calcularPrecoServico(item.servico);
+                    const telefoneLimpo = item.telefone ? item.telefone.replace(/\D/g, '') : '';
+                    const mensagemLembrete = encodeURIComponent(`Olá, ${item.cliente}! Passando para lembrar do seu horário hoje às ${item.horario} (${item.servico}) no Studio Bella. Te aguardamos aqui! 🌸`);
+                    const linkZapCliente = telefoneLimpo ? `https://wa.me/55${telefoneLimpo}?text=${mensagemLembrete}` : `#`;
+
+                    const isConcluido = item.status === 'concluido';
+                    const isCancelado = item.status === 'cancelado';
+                    const formaPagamentoAtual = item.pagamentos || '';
+
+                    let corBorda = "#d63384";
+                    if (isConcluido) corBorda = "#25D366";
+                    if (isCancelado) corBorda = "#e74c3c";
+
+                    const card = document.createElement("div");
+                    card.style.background = "#FAFAFA";
+                    card.style.padding = "15px";
+                    card.style.borderRadius = "8px";
+                    card.style.border = "1px solid #EAEAEA";
+                    card.style.borderLeft = `4px solid ${corBorda}`;
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <strong style="color: #d63384; font-size: 1.05rem;"><i class="fa-regular fa-clock"></i> ${item.horario}</strong>
+                            <span style="font-size: 0.85rem; color: #777;">Data: ${dataFormatada}</span>
+                        </div>
+                        <p style="margin: 4px 0; color: #333;"><strong>Cliente:</strong> ${item.cliente} ${isCancelado ? '<span style="color: #e74c3c; font-size: 0.85rem; font-weight: bold; margin-left: 8px;">(CANCELADO)</span>' : ''}</p>
+                        <p style="margin: 4px 0; color: #555;"><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>
+                        <p style="margin: 4px 0; color: #555;"><strong>Serviço:</strong> ${item.servico} <span style="color: #d63384; font-weight: bold; float: right;">R$ ${precoServico},00</span></p>
+                        
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #EAEAEA; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label style="font-size: 0.85rem; color: #555;">Forma de Pagamento:</label>
+                                <select id="pagamento-${item.id}" style="width: 150px; padding: 5px; font-size: 0.85rem;" ${isCancelado ? 'disabled' : ''}>
+                                    <option value="" ${!formaPagamentoAtual ? 'selected' : ''}>Selecione...</option>
+                                    <option value="Dinheiro" ${formaPagamentoAtual === 'Dinheiro' ? 'selected' : ''}>Dinheiro</option>
+                                    <option value="Pix" ${formaPagamentoAtual === 'Pix' ? 'selected' : ''}>Pix</option>
+                                    <option value="Débito" ${formaPagamentoAtual === 'Débito' ? 'selected' : ''}>Débito</option>
+                                    <option value="Crédito" ${formaPagamentoAtual === 'Crédito' ? 'selected' : ''}>Crédito</option>
+                                </select>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 6px;">
+                                <button onclick="confirmarExecucao('${item.id}', '${item.status || ''}')" style="background: ${isConcluido ? '#25D366' : '#FDF2F8'}; color: ${isConcluido ? '#FFF' : '#d63384'}; border: 1px solid #d63384; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; display: flex; align-items: center; gap: 5px;" ${isCancelado ? 'disabled' : ''}>
+                                    <i class="fa-solid ${isConcluido ? 'fa-check-double' : 'fa-check'}"></i> ${isConcluido ? 'Concluído' : 'Confirmar'}
+                                </button>
+                                
+                                <button onclick="event.preventDefault(); event.stopPropagation(); window.open('${linkZapCliente}', '_blank');" style="background: #25D366; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fa-brands fa-whatsapp"></i> Lembrete
+                                </button>
+
+                                <button onclick="cancelarAgendamento('${item.id}', '${item.status || ''}')" style="background: ${isCancelado ? '#888' : '#e74c3c'}; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-ban"></i> ${isCancelado ? 'Ativar' : 'Cancelar'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Erro ao carregar agenda:", err);
+                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar dados.</p>";
+            }
+        }
+
+        async function carregarResumoAdmin() {
+            const dataFiltro = document.getElementById("filter-date-admin").value;
+            const container = document.getElementById("agendamentos-list-admin");
+            const lblQtd = document.getElementById("admin-resumo-qtd");
+            const lblTotal = document.getElementById("admin-resumo-total");
+            const lblCanceladosQtd = document.getElementById("admin-resumo-cancelados-qtd");
+            const lblCanceladosVal = document.getElementById("admin-resumo-cancelados-val");
+            const lblDetalhes = document.getElementById("admin-detalhes-pagamento");
+
+            container.innerHTML = "<p style='color: #777; text-align: center;'>Carregando...</p>";
+
+            try {
+                let query = _supabase.from("agendamento").select("*");
+                if (dataFiltro) query = query.eq("data", dataFiltro);
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                let faturamentoTotal = 0;
+                let qtdConcluidos = 0;
+                let qtdCancelados = 0;
+                let valorCancelados = 0;
+                let totaisPagamento = { Dinheiro: 0, Pix: 0, Débito: 0, Crédito: 0 };
+
+                data.forEach(item => {
+                    const preco = calcularPrecoServico(item.servico);
+                    if (item.status === 'concluido') {
+                        qtdConcluidos++;
+                        faturamentoTotal += preco;
+                        if (item.pagamentos && totaisPagamento[item.pagamentos] !== undefined) {
+                            totaisPagamento[item.pagamentos] += preco;
+                        }
+                    } else if (item.status === 'cancelado') {
+                        qtdCancelados++;
+                        valorCancelados += preco;
+                    }
+                });
+
+                lblQtd.textContent = qtdConcluidos;
+                lblTotal.textContent = `R$ ${faturamentoTotal.toFixed(2).replace(".", ",")}`;
+                lblCanceladosQtd.textContent = qtdCancelados;
+                lblCanceladosVal.textContent = `R$ ${valorCancelados.toFixed(2).replace(".", ",")}`;
+                
+                lblDetalhes.innerHTML = `
+                    <strong>Por Forma de Pagamento:</strong><br>
+                    💵 Dinheiro: R$ ${totaisPagamento.Dinheiro.toFixed(2).replace(".", ",")} | 
+                    📱 Pix: R$ ${totaisPagamento.Pix.toFixed(2).replace(".", ",")}<br>
+                    💳 Débito: R$ ${totaisPagamento.Débito.toFixed(2).replace(".", ",")} | 
+                    💳 Crédito: R$ ${totaisPagamento.Crédito.toFixed(2).replace(".", ",")}
+                `;
+
+                if (data.length === 0) {
+                    container.innerHTML = "<p style='color: #777; text-align: center;'>Nenhum registro encontrado para esta data.</p>";
+                    return;
+                }
+
+                container.innerHTML = "";
+                data.forEach(item => {
+                    const dataFormatada = item.data ? item.data.split("-").reverse().join("/") : '--/--/----';
+                    let precoServico = calcularPrecoServico(item.servico);
+                    const isConcluido = item.status === 'concluido';
+                    const isCancelado = item.status === 'cancelado';
+
+                    let corBorda = "#d63384";
+                    if (isConcluido) corBorda = "#25D366";
+                    if (isCancelado) corBorda = "#e74c3c";
+
+                    const card = document.createElement("div");
+                    card.style.background = "#FAFAFA";
+                    card.style.padding = "12px 15px";
+                    card.style.borderRadius = "8px";
+                    card.style.border = "1px solid #EAEAEA";
+                    card.style.borderLeft = `4px solid ${corBorda}`;
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <strong style="color: #d63384;"><i class="fa-regular fa-clock"></i> ${item.horario} - Profissional: ${item.barbeiro}</strong>
+                            <span style="font-size: 0.8rem; color: #777;">${dataFormatada}</span>
+                        </div>
+                        <p style="margin: 2px 0; font-size: 0.9rem; color: #333;"><strong>Cliente:</strong> ${item.cliente} ${isCancelado ? '<span style="color: #e74c3c; font-size: 0.8rem;">(Cancelado)</span>' : isConcluido ? '<span style="color: #25D366; font-size: 0.8rem;">(Concluído)</span>' : ''}</p>
+                        <p style="margin: 2px 0; font-size: 0.9rem; color: #555;"><strong>Serviço:</strong> ${item.servico} | <strong>Pagamento:</strong> ${item.pagamentos || 'Não informado'} <span style="color: #d63384; font-weight: bold; float: right;">R$ ${precoServico},00</span></p>
+                    `;
+                    container.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error("Erro ao carregar resumo:", err);
+                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar resumo administrativo.</p>";
+            }
+        }
+
+        async function confirmarExecucao(id, statusAtual) {
+            const novoStatus = (statusAtual === 'concluido') ? null : 'concluido';
+            const selectPagamento = document.getElementById(`pagamento-${id}`);
+            const formaPagamento = selectPagamento ? selectPagamento.value : null;
+
+            const dadosUpdate = { status: novoStatus };
+            if (formaPagamento) dadosUpdate.pagamentos = formaPagamento;
+
+            const { error } = await _supabase.from("agendamento").update(dadosUpdate).eq("id", id);
+            if (error) {
+                alert("Erro ao atualizar serviço: " + error.message);
+            } else {
+                carregarAgendamentos();
+            }
+        }
+
+        function cancelarAgendamento(id, statusAtual) {
+            const novoStatus = (statusAtual === 'cancelado') ? null : 'cancelado';
+            const titulo = novoStatus === 'cancelado' ? "Cancelar Agendamento" : "Reativar Agendamento";
+            const mensagem = novoStatus === 'cancelado' 
+                ? "Deseja realmente cancelar este agendamento? O horário será liberado para novos clientes." 
+                : "Deseja reativar este agendamento?";
+
+            mostrarConfirmacao(titulo, mensagem, async () => {
+                const { error } = await _supabase.from("agendamento").update({ status: novoStatus }).eq("id", id);
+                if (error) {
+                    alert("Erro ao alterar status: " + error.message);
+                } else {
+                    carregarAgendamentos();
+                }
+            });
+        }
     </script>
 </body>
 </html>
